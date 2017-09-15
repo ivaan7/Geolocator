@@ -1,13 +1,21 @@
 package com.bosnjakovic.ivan.geolocator.utility;
 
+import android.annotation.TargetApi;
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.location.Address;
 import android.location.Geocoder;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.DocumentsContract;
+import android.provider.MediaStore;
+import android.support.annotation.Nullable;
 
 import com.google.android.gms.maps.model.LatLng;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Locale;
 
@@ -18,7 +26,7 @@ public class Utilities {
 
     private static Geocoder mGeocoder;
 
-    public static LatLng getLatLngFromSingleAddress(Context context, String locationName, String locationAddress, String zipCode){
+    public static LatLng getLatLngFromSingleAddress(Context context, String locationName, String locationAddress, String zipCode) {
 
         mGeocoder = new Geocoder(context, Locale.getDefault());
         LatLng latLng = null;
@@ -34,4 +42,5 @@ public class Utilities {
         }
         return latLng;
     }
+
 }
