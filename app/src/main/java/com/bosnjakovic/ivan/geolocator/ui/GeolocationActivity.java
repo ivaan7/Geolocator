@@ -1,6 +1,11 @@
 package com.bosnjakovic.ivan.geolocator.ui;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Environment;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -9,7 +14,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.bosnjakovic.ivan.geolocator.Address;
+import com.bosnjakovic.ivan.geolocator.service.GeolocationExtractionService;
+import com.bosnjakovic.ivan.geolocator.model.Address;
 import com.bosnjakovic.ivan.geolocator.R;
 import com.bosnjakovic.ivan.geolocator.utility.Utilities;
 import com.google.android.gms.maps.model.LatLng;
@@ -25,10 +31,12 @@ import java.util.List;
 import java.util.Scanner;
 
 import easyfilepickerdialog.kingfisher.com.library.model.DialogConfig;
+import easyfilepickerdialog.kingfisher.com.library.model.SupportFile;
 import easyfilepickerdialog.kingfisher.com.library.view.FilePickerDialogFragment;
 
 public class GeolocationActivity extends AppCompatActivity {
 
+    public static final String ADDRESS_ARRAY_EXTRA = "com.bosnjakovic.ivan.geolocator.address.array.extra";
     private EditText mEtSingleAddressEntry;
     private Button mBSingleAddress;
     private Button mBMultipleAddress;
@@ -41,6 +49,22 @@ public class GeolocationActivity extends AppCompatActivity {
 
         initWidgets();
         setupListeners();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Register mMessageReceiver to receive messages.
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
+                new IntentFilter(GeolocationExtractionService.LOCATIONS_BROADCAST));
+    }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Register mMessageReceiver to receive messages.
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mMessageReceiver);
     }
 
     private void initWidgets() {
@@ -59,20 +83,24 @@ public class GeolocationActivity extends AppCompatActivity {
             public void onClick(View view) {
 
                 String location = mEtSingleAddressEntry.getText().toString();
+                String[] address = location.split(",");
 
-                Scanner scanner = new Scanner(location);
-                scanner.useDelimiter(",");
-                String locationName = scanner.next();
-                String locationAdress = scanner.next();
-                String locationZipCode = scanner.next();
+                String locationName = address[0];
+                String locationAdress = address[1];
+                String locationZipCode = address[2];
 
-                scanner.close();
-
-                LatLng addressLatLng = Utilities.getLatLngFromSingleAddress(GeolocationActivity.this, locationName, locationAdress, locationZipCode);
-                double adressLat = addressLatLng.latitude;
+                LatLng addressLatLng = Utilities.getLatLngFromSingleAddress(GeolocationActivity.this,
+                        locationAdress, locationZipCode);
+                double addressLat = addressLatLng.latitude;
                 double addressLng = addressLatLng.longitude;
 
-                Toast.makeText(GeolocationActivity.this, "Latitude: " + adressLat + "\nlongitude: " + addressLng, Toast.LENGTH_SHORT).show();
+                mTvResults.setText("Location name: " + locationName + "\n"
+                                    + "Location address: " + locationAdress + "\n"
+                                    + "Zip code: " + locationZipCode + "\n"
+                                    + "Latitude: " + addressLat + "\n"
+                                    + "Longitude: " + addressLng
+                );
+               // Toast.makeText(GeolocationActivity.this, "Latitude: " + addressLat + "\nlongitude: " + addressLng, Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -83,7 +111,8 @@ public class GeolocationActivity extends AppCompatActivity {
                         .enableMultipleSelect(true) // default is false
                         .enableFolderSelect(true) // default is false
                         .initialDirectory(Environment.getExternalStorageDirectory().getAbsolutePath()) // default is sdcard
-                        //  .supportFiles(new SupportFile(".3gpp", R.drawable.btn_select), new SupportFile(".mp3", 0), new SupportFile(".pdf", 0)) // default is showing all file types.
+                        .supportFiles(new SupportFile(".csv", 0), new SupportFile(".txt", 0), new SupportFile(".doc", 0),
+                                new SupportFile(".docx", 0)) // default is showing all file types.
                         .build();
 
                 new FilePickerDialogFragment.Builder()
@@ -97,24 +126,26 @@ public class GeolocationActivity extends AppCompatActivity {
                                         streamReader = new InputStreamReader(new FileInputStream(file));
                                         BufferedReader reader = new BufferedReader(streamReader);
                                         String line = "";
-                                        List<Address> adrese = new ArrayList<Address>();
+                                        ArrayList<Address> adrese = new ArrayList<Address>();
                                         while ((line = reader.readLine()) != null) {
 
                                             String[] address = line.split(",");
                                             String storeName = address[0];
                                             String storeAddress = address[1];
                                             String zip = address[2];
-                                            adrese.add(new Address(storeName,storeAddress,zip));
+                                            adrese.add(new Address(storeName, storeAddress, zip));
                                         }
-
-                                        mTvResults.setText(adrese.get(0).toString());
                                         reader.close();
+                                        Intent intent = new Intent(GeolocationActivity.this, GeolocationExtractionService.class);
+                                        intent.putParcelableArrayListExtra(ADDRESS_ARRAY_EXTRA, adrese);
+                                        startService(intent);
+
+
                                     } catch (FileNotFoundException e) {
                                         e.printStackTrace();
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }
-
                                 }
                             }
                         })
@@ -124,4 +155,15 @@ public class GeolocationActivity extends AppCompatActivity {
         });
 
     }
+
+    // handler for received Intents for the event
+    private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Extract data included in the Intent
+            String message = intent.getStringExtra(GeolocationExtractionService.LOCATIONS_EXTRA);
+            mTvResults.setText(message);
+        }
+    };
+
 }
