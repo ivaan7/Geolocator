@@ -25,7 +25,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="2">
+        android:weightSum="3">
 
         <Button
             android:id="@+id/bLocationFromCsv"
@@ -40,9 +40,17 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Single address" />
+
+        <Button
+            android:id="@+id/bWriteToFile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Save to file" />
     </LinearLayout>
 
     <ScrollView
+        android:id="@+id/svText"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
